@@ -53,3 +53,22 @@ public:
 //!	Write material data to Stream
 	virtual void Write(COutputter& output, unsigned int mset);
 };
+
+//!	Material class for 4Q element
+class C4QMaterial : public CMaterial
+{
+public:
+
+	double posi_rate;	//!< Sectional area of a 4Q element
+
+	double thickness;
+
+public:
+	
+//!	Read material data from stream Input
+	virtual bool Read(ifstream& Input, unsigned int mset);
+
+//!	Write material data to Stream OutputFile
+	virtual void Write(COutputter& output, unsigned int mset);
+};
+
