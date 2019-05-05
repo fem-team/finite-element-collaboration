@@ -49,7 +49,7 @@ bool CQ4::Read(ifstream& Input, unsigned int Ele, CMaterial* MaterialSets, CNode
 	unsigned int N1, N2, N3, N4; // Node Number
 
 	Input >> N1 >> N2 >> N3 >> N4 >> MSet;
-	ElementMaterial_ = dynamic_cast<CBarMaterial*>(MaterialSets) + MSet - 1;
+	ElementMaterial_ = dynamic_cast<CQ4Material*>(MaterialSets) + MSet - 1;
 	nodes_[0] = &NodeList[N1 - 1];
 	nodes_[1] = &NodeList[N2 - 1];
 	nodes_[2] = &NodeList[N3 - 1];
@@ -65,7 +65,7 @@ bool CQ4::Read(ifstream& Input, unsigned int Ele, CMaterial* MaterialSets, CNode
 void CQ4::Write(COutputter& output, unsigned int Ele)
 {
 	output << setw(5) << Ele+1 << setw(11) << nodes_[0]->NodeNumber
-		<< setw(9) << nodes_[1]->NodeNumber << setw(9) << nodes_[2]->NodeNumber
+	<< setw(9) << nodes_[1]->NodeNumber << setw(9) << nodes_[2]->NodeNumber
 		<< setw(9) << nodes_[3]->NodeNumber << setw(12) << ElementMaterial_->nset << endl;
 }
 
@@ -76,6 +76,9 @@ void CQ4::GenerateLocationMatrix()
     for (unsigned int N = 0; N < NEN_; N++)
         for (unsigned int D = 0; D < 2; D++)
             LocationMatrix_[i++] = nodes_[N]->bcode[D];
+
+
+		
 }
 
 unsigned int CQ4::SizeOfStiffnessMatrix() { return 36; }
@@ -116,6 +119,7 @@ void CQ4::ElementStrainMatrix(double* Be,double eta, double psi)
 	Be[6] = InvJ[1]*GN[1] + InvJ[3]*GN[3];
 	Be[7] = -InvJ[0]*GN[1] - InvJ[2]*GN[2];
 	Be[8] = -InvJ[1]*GN[1] - InvJ[3]*GN[2];
+	
 
 	
 }
@@ -163,6 +167,9 @@ void CQ4::GaussPointLocalAssembly(double* CM, double* Matrix, double x_gauss, do
 	Matrix[34] = Matrix[34] + ( Be[7]*CM[2]*Be[1] + Be[8]*CM[0]*Be[2] )*Be[0]; //b6*c2*conj(b0) + b7*c0*conj(b1)
 	Matrix[35] = Matrix[35] + ( Be[8]*CM[1]*Be[1] + Be[7]*CM[2]*Be[2] )*Be[0]; //b7*c1*conj(b0) + b6*c2*conj(b1)
 
+
+	
+
 }
 
 
@@ -174,17 +181,17 @@ void CQ4::ElementStiffness(double* Matrix)
 	double CM[3];
 	//Constitute Matrix Element
 	CQ4Material* material_ = dynamic_cast<CQ4Material*>(ElementMaterial_);
-	double a=material_->E;
-	double b=(1- material_->Nu * material_->Nu);
-	double result=a/b;
-	//CM[0] = material_->E / (1- material_->Nu * material_->Nu);   //1
+	CM[0] = material_->E / (1- material_->Nu * material_->Nu);   //1
 	CM[1] = CM[0] * material_->Nu; // Nu
 	CM[2] = (CM[0] - CM[1])/2;  // 1-Nu /2
 
-	GaussPointLocalAssembly(CM,Matrix,GP,GP);
-	GaussPointLocalAssembly(CM,Matrix,-GP,GP);
-	GaussPointLocalAssembly(CM,Matrix,GP,-GP);
 	GaussPointLocalAssembly(CM,Matrix,-GP,-GP);
+	GaussPointLocalAssembly(CM,Matrix,GP,-GP);
+	GaussPointLocalAssembly(CM,Matrix,-GP,GP);
+	GaussPointLocalAssembly(CM,Matrix,GP,GP);
+
+
+
 
 }
 
@@ -198,15 +205,19 @@ void CQ4::ElementStress(double* stress, double* Displacement)
 	CM[0] = material_->E / (1- material_->Nu * material_->Nu);
 	CM[1] = CM[0] * material_->Nu;
 	CM[2] = (CM[0] - CM[1])/2;
+	
 
 	double strain_temp[3];
+	memset(strain_temp,0,sizeof(strain_temp));
 	ElementStrainMatrix(Be,-GP,-GP);
+
 	for(int i = 1;i < 5;i++)
 	{
-		strain_temp[0] += Be[2*i-2]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
-		strain_temp[1] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
-		strain_temp[2] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-2]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[0] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
+		strain_temp[1] += Be[2*i]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[2] += Be[2*i]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
 	}
+
 
 	stress[0] = CM[0]*strain_temp[0] + CM[1]*strain_temp[1];
 	stress[1] = CM[1]*strain_temp[0] + CM[0]*strain_temp[1];
@@ -216,9 +227,9 @@ void CQ4::ElementStress(double* stress, double* Displacement)
 	ElementStrainMatrix(Be,GP,-GP);
 	for(int i = 1;i < 5;i++)
 	{
-		strain_temp[0] += Be[2*i-2]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
-		strain_temp[1] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
-		strain_temp[2] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-2]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[0] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
+		strain_temp[1] += Be[2*i]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[2] += Be[2*i]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
 	}
 
 	stress[3] = CM[0]*strain_temp[0] + CM[1]*strain_temp[1];
@@ -229,9 +240,9 @@ void CQ4::ElementStress(double* stress, double* Displacement)
 	ElementStrainMatrix(Be,-GP,GP);
 	for(int i = 1;i < 5;i++)
 	{
-		strain_temp[0] += Be[2*i-2]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
-		strain_temp[1] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
-		strain_temp[2] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-2]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[0] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
+		strain_temp[1] += Be[2*i]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[2] += Be[2*i]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
 	}
 
 	stress[6] = CM[0]*strain_temp[0] + CM[1]*strain_temp[1];
@@ -242,15 +253,16 @@ void CQ4::ElementStress(double* stress, double* Displacement)
 	ElementStrainMatrix(Be,GP,GP);
 	for(int i = 1;i < 5;i++)
 	{
-		strain_temp[0] += Be[2*i-2]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
-		strain_temp[1] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
-		strain_temp[2] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-2]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[0] += Be[2*i-1]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0);
+		strain_temp[1] += Be[2*i]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
+		strain_temp[2] += Be[2*i]*Displacement[LocationMatrix_[2*i-2]-1]*(double)(!LocationMatrix_[2*i-2]==0) + Be[2*i-1]*Displacement[LocationMatrix_[2*i-1]-1]*(double)(!LocationMatrix_[2*i-1]==0);
 	}
 
 	stress[9] = CM[0]*strain_temp[0] + CM[1]*strain_temp[1];
 	stress[10] = CM[1]*strain_temp[0] + CM[0]*strain_temp[1];
 	stress[11] = CM[2]*strain_temp[2];
 	
+
 }
 
 void CQ4::ElementCoordinates (double * coord)

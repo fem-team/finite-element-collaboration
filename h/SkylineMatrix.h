@@ -233,6 +233,8 @@ template <class T_>
 void CSkylineMatrix<T_>::Assembly(double* Matrix, unsigned int* LocationMatrix, size_t ND)
 {
 //  Assemble global stiffness matrix
+
+
     for (unsigned int j = 0; j < ND; j++)
     {
         unsigned int Lj = LocationMatrix[j];    // Global equation number corresponding to jth DOF of the element
@@ -253,7 +255,7 @@ void CSkylineMatrix<T_>::Assembly(double* Matrix, unsigned int* LocationMatrix, 
         }
     }
     
-    return;
+    //return;
 }
 
 //    Calculate address of diagonal elements in banded matrix

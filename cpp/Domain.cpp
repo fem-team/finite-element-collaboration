@@ -93,9 +93,7 @@ bool CDomain::ReadData(string FileName, string OutFile)
     else
         return false;
 
-//	Update equation number
-	CalculateEquationNumber();
-	Output->OutputEquationNumber();
+
 
 //	Read load data
 	if (ReadLoadCases())
@@ -108,6 +106,10 @@ bool CDomain::ReadData(string FileName, string OutFile)
         Output->OutputElementInfo();
     else
         return false;
+
+	//	Update equation number
+	CalculateEquationNumber();
+	Output->OutputEquationNumber();
 
 	return true;
 }

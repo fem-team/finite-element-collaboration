@@ -14,6 +14,7 @@
 #include "Outputter.h"
 #include "Clock.h"
 
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -61,12 +62,14 @@ int main(int argc, char *argv[])
 //  and address of diagonal elements
 	FEMData->AllocateMatrices();
 
-	//新加
-	FEMData->AssembleGravity();
+
 
 //  Assemble the banded gloabl stiffness matrix
 	FEMData->AssembleStiffnessMatrix();
     
+		//新加
+	FEMData->AssembleGravity();
+
     double time_assemble = timer.ElapsedTime();
 
 //  Solve the linear equilibrium equations for displacements
@@ -99,7 +102,7 @@ int main(int argc, char *argv[])
         Output->PrintDisplacement(lcase);
 #endif
             
-        Output->OutputNodalDisplacement(lcase); //输出节点位移
+	        Output->OutputNodalDisplacement(lcase); //输出节点位移
     }
 
     double time_solution = timer.ElapsedTime();

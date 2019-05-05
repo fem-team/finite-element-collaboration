@@ -162,6 +162,9 @@ void COutputter::OutputElementInfo()
 			case ElementTypes::Bar: // Bar element
 				PrintBarElementData(EleGrp);
 				break;
+			case ElementTypes::Q4:
+				PrintQ4ElementData(EleGrp);
+				break;
 		}
 	}
 }
